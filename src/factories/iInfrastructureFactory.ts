@@ -1,5 +1,9 @@
+import { IServerProvisioner } from './products/iServerProvisioner';
+import { IDatabaseManager } from './products/iDatabaseManager';
+import { ISSLCertificateManager } from './products/iSslCertificateManager';
+
 export interface IInfrastructureFactory {
-    createServerProvisioner(): any;
-    createDatabaseManager(): any;
-    createSslCertificateManager(): any;
+    createServerProvisioner(): IServerProvisioner;
+    createDatabaseManager(): IDatabaseManager;
+    createSslCertificateManager(): ISSLCertificateManager;
 }
