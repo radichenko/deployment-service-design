@@ -1,36 +1,45 @@
 import { DeploymentConfig } from '../config/deploymentConfig';
 import { IDeploymentStrategy } from '../strategies/iDeploymentStrategy';
 import { SharedHostingStrategy } from '../strategies/sharedHostingStrategy';
+import { IInfrastructureFactory } from '../factories/iInfrastructureFactory';
+import { SharedHostingInfraFactory } from '../factories/sharedHostingInfraFactory';
 
 export class DeploymentService {
-    private activeStrategy: IDeploymentStrategy | null = null;
+    private strategyRegistry: Map<string, () => IDeploymentStrategy> = new Map();
+    private factoryRegistry: Map<string, () => IInfrastructureFactory> = new Map();
 
     constructor() {
-        console.log("DeploymentService initialized.");
+        console.log("DeploymentService Initialized.");
+        this.strategyRegistry.set('shared', () => new SharedHostingStrategy());
+        this.factoryRegistry.set('shared', () => new SharedHostingInfraFactory());
     }
 
     public async deploy(config: DeploymentConfig): Promise<void> {
         console.log(`Received deployment request for app: ${config.appName}`);
         console.log(`Hosting type: ${config.hostingType}`);
 
-        if (config.hostingType === 'shared') {
-            this.activeStrategy = new SharedHostingStrategy();
-            console.log("Selected SharedHostingStrategy.");
-        } else {
-            console.error(`Hosting type '${config.hostingType}' is not yet supported.`);
-            this.activeStrategy = null;
+        const strategyConstructor = this.strategyRegistry.get(config.hostingType);
+        const factoryConstructor = this.factoryRegistry.get(config.hostingType);
+
+        if (!strategyConstructor || !factoryConstructor) {
+            console.error(`No strategy or factory found for hosting type '${config.hostingType}'.`);
             return;
         }
 
-        if (this.activeStrategy) {
+        const activeStrategy = strategyConstructor();
+        const activeFactory = factoryConstructor();
+        console.log(`Selected strategy: ${activeStrategy.constructor.name}, factory: ${activeFactory.constructor.name}`);
+
+
+        if (activeStrategy && activeFactory) {
             try {
-                await this.activeStrategy.execute(config);
+                await activeStrategy.execute(config, activeFactory);
                 console.log(`Strategy execution completed for ${config.appName}.`);
             } catch (error) {
                 console.error(`Error during strategy execution for ${config.appName}:`, error);
             }
         } else {
-            console.log(`No active strategy to execute for ${config.appName}.`);
+            // console.log(`No active strategy or factory to execute for ${config.appName}.`);
         }
     }
 }
