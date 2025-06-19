@@ -5,7 +5,6 @@ export class DeploymentConfigBuilder {
 
     constructor(appName: string, hostingType: DeploymentConfig['hostingType']) {
         this.config = { appName, hostingType, enableSsl: false };
-        console.log(`Initialized for: ${appName}, Type: ${hostingType}`);
     }
 
     withSourcePath(path: string): this {
@@ -18,11 +17,29 @@ export class DeploymentConfigBuilder {
         return this;
     }
 
+    withSsl(enable: boolean = true): this {
+        this.config.enableSsl = enable;
+        return this;
+    }
+
+    withDatabase(dbConfig: DatabaseConfig): this {
+        this.config.database = dbConfig;
+        return this;
+    }
+
+    withCustomParam(key: string, value: any): this {
+        if (!this.config.customParams) {
+            this.config.customParams = {};
+        }
+        this.config.customParams[key] = value;
+        return this;
+    }
+
     build(): DeploymentConfig {
         if (!this.config.appName || !this.config.hostingType || !this.config.sourcePath || !this.config.domain) {
-            console.error("Missing required fields for build");
+            throw new Error("Missing required fields: appName, hostingType, sourcePath, or domain.");
         }
-        console.log(`Built config for: ${this.config.appName}`);
+        console.log(`[DeploymentConfigBuilder] Built config for: ${this.config.appName}`);
         return this.config as DeploymentConfig;
     }
 }
