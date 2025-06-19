@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Transpiled/compiled JavaScript files (TypeScript output)
+dist/
+# Якщо ти використовуєш іншу папку для компіляції, наприклад, build/ або out/, додай її
+# build/
+# out/
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Environment variables
+.env
+.env.*
+!.env.example # Важливо! Дозволяє комітити приклад .env файлу
+
+# IDE & Editor specific files
+.vscode/
+.idea/ # Для WebStorm / IntelliJ продуктів
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+lcov.info
+.nyc_output/
+
+# Optional: Compiled binary addons (if you have any)
+# build/Release
+
+# Optional: Other temporary files or specific build artifacts
+# tmp/
