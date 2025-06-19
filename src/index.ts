@@ -3,47 +3,43 @@ import { DeploymentConfigBuilder } from './config/deploymentConfigBuilder';
 import { LoggingObserver } from './observers/loggingObserver';
 import { DeploymentService } from './services/deploymentService';
 
-async function mainDemo() {
-    console.log("Demo");
+async function runDemo() {
+    console.log("Deploy demo");
 
     const deploymentService = new DeploymentService();
     const logger = new LoggingObserver();
     deploymentService.addObserver(logger);
 
-    let sharedConfig: DeploymentConfig;
+    console.log("\n Case 1: Deploy to Shared Hosting");
     try {
-        console.log("\nBuilding Shared Hosting config");
-        const dbDetails: DatabaseConfig = {
-            type: 'mysql',
-            name: 'myblog_db',
-            user: 'bloguser',
-            password: 'securepassword123'
-        };
-
-        sharedConfig = new DeploymentConfigBuilder('MyAwesomeBlog', 'shared')
-            .withSourcePath('/path/to/my/blog/sources')
-            .withDomain('myawesomeblog.com')
+        const sharedConfig = new DeploymentConfigBuilder('my-personal-blog', 'shared')
+            .withSourcePath('/var/www/my-blog-src')
+            .withDomain('myblog.example.com')
             .withSsl(true)
-            .withDatabase(dbDetails)
-            .withCustomParam('phpVersion', '8.1')
+            .withDatabase({ type: 'mysql', name: 'myblog_db', user: 'bloguser', password: 'password123' } as DatabaseConfig)
             .build();
-        console.log("Shared Hosting Config successfully built.");
-    } catch (error: any) {
-        console.error("Error building Shared Hosting config:", error.message);
-        return;
-    }
-
-    try {
-        console.log("\nAttempting Shared Hosting deployment...");
         await deploymentService.deploy(sharedConfig);
-        console.log("Shared Hosting Deployment attempt finished.");
-    } catch (error: any) {
-        console.error("Error during shared hosting deployment in demo script:", error.message);
+    } catch (e: any) {
+        console.error(`DEMO CATCH: Shared Hosting deployment failed: ${e.message}`);
     }
 
-    console.log("\nDeployment Demo Finished");
+    console.log("\nCase 2: Deploy to Kubernetes");
+    try {
+        const k8sConfig = new DeploymentConfigBuilder('my-cool-app', 'kubernetes')
+            .withSourcePath('git@github.com:user/my-cool-app.git')
+            .withDomain('app.example.com')
+            .withSsl(true)
+            .withCustomParam('namespace', 'production')
+            .withCustomParam('replicas', 3)
+            .withCustomParam('image', 'myorg/my-cool-app:v1.2.3')
+            .build();
+        await deploymentService.deploy(k8sConfig);
+    } catch (e: any) {
+        console.error(`DEMO CATCH: Kubernetes deployment failed: ${e.message}`);
+    }
+    console.log("\nDemo finished");
 }
 
-mainDemo().catch(err => {
-    console.error("Unhandled exception in mainDemo:", err);
+runDemo().catch(error => {
+    console.error("Unhandled error in demo:", error);
 });

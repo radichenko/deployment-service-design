@@ -1,7 +1,6 @@
 export interface IDeploymentEvent {
     type: 'PROGRESS' | 'SUCCESS' | 'ERROR' | 'INFO';
     message: string;
-    timestamp: Date;
     details?: any;
 }
 

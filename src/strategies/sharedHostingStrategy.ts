@@ -4,51 +4,37 @@ import { IInfrastructureFactory } from '../factories/iInfrastructureFactory';
 import { IDeploymentObservable, IDeploymentEvent } from '../observers/iDeploymentObserver';
 
 export class SharedHostingStrategy implements IDeploymentStrategy {
-    private observable?: IDeploymentObservable;
-
-    constructor() {
-    }
-
-    setObservable(observable: IDeploymentObservable): void {
-        this.observable = observable;
-    }
-
-    private notify(type: IDeploymentEvent['type'], message: string, details?: any) {
-        if (this.observable) {
-            this.observable.notifyObservers({ type, message, timestamp: new Date(), details });
+    private notify(observable: IDeploymentObservable | undefined, type: IDeploymentEvent['type'], message: string, appName: string) {
+        const event: IDeploymentEvent = { type, message, details: { strategy: 'SharedHosting', app: appName } };
+        if (observable) {
+            observable.notifyObservers(event);
         } else {
-            console.log(`[SharedHostingStrategy - Fallback Log] ${type}: ${message} ${details ? JSON.stringify(details) : ''}`);
+            console.log(`[SharedHostingStrategy] ${type}: ${message}`);
         }
     }
 
-    async execute(config: DeploymentConfig, factory: IInfrastructureFactory): Promise<void> {
-        this.notify('PROGRESS', `Starting Shared Hosting deployment for ${config.appName}`, { step: 'start' });
+    async execute(config: DeploymentConfig, infraFactory: IInfrastructureFactory, observable?: IDeploymentObservable): Promise<void> {
+        this.notify(observable, 'PROGRESS', `Preparing for deployment of ${config.appName}.`, config.appName);
 
-        const serverProvisioner = factory.createServerProvisioner();
-        const dbManager = factory.createDatabaseManager();
-        const sslManager = factory.createSslCertificateManager();
-        this.notify('PROGRESS', 'Infrastructure components obtained.', { step: 'components_ready' });
-
-        this.notify('PROGRESS', 'Configuring web server...', { step: 'web_server_config' });
+        const serverProvisioner = infraFactory.createServerProvisioner();
+        this.notify(observable, 'PROGRESS', 'Server provisioner obtained.', config.appName);
         await serverProvisioner.configureWebServer({ domain: config.domain, rootPath: config.sourcePath });
 
         if (config.database && config.database.type !== 'none') {
-            this.notify('PROGRESS', `Managing database: ${config.database.name}`, { step: 'db_manage' });
-            await dbManager.manageDatabase({
-                action: 'create',
-                dbName: config.database.name!,
-                dbUser: config.database.user,
-                dbPassword: config.database.password
-            });
+            const dbManager = infraFactory.createDatabaseManager();
+            this.notify(observable, 'PROGRESS', 'Database manager obtained.', config.appName);
+            await dbManager.manageDatabase({ action: 'create', ...config.database });
         }
 
         if (config.enableSsl) {
-            this.notify('PROGRESS', `Managing SSL for domain: ${config.domain}`, { step: 'ssl_manage' });
-            await sslManager.manageCertificate({
-                action: 'install',
-                domain: config.domain
-            });
+            const sslManager = infraFactory.createSslCertificateManager();
+            this.notify(observable, 'PROGRESS', 'SSL manager obtained.', config.appName);
+            await sslManager.manageCertificate({ action: 'install', domain: config.domain });
         }
-        // this.notify('SUCCESS', `Shared Hosting deployment for ${config.appName} steps completed.`, { step: 'finish_strategy' });
+
+        this.notify(observable, 'PROGRESS', `Simulating file upload/sync for ${config.appName}...`, config.appName);
+        await new Promise(resolve => setTimeout(resolve, 150)); // Імітація дії
+
+        // this.notify(observable, 'SUCCESS', `Shared hosting deployment for ${config.appName} completed.`, config.appName);
     }
 }

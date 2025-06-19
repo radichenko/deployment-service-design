@@ -1,6 +1,11 @@
 export interface ServerConfigDetails {
     domain: string;
     rootPath?: string;
+    appName?: string;
+    image?: string;
+    namespace?: string;
+    replicas?: number;
+    [key: string]: any;
 }
 
 export interface IServerProvisioner {
@@ -8,12 +13,15 @@ export interface IServerProvisioner {
 }
 
 export class CPanelProvisioner implements IServerProvisioner {
-    constructor() {
-        console.log("CPanelProvisioner Initialized (stub).");
-    }
     async configureWebServer(details: ServerConfigDetails): Promise<void> {
-        console.log(`CPanelProvisioner: Configuring web server for domain ${details.domain} at path ${details.rootPath} (stub)...`);
+        console.log(`[CPanelProvisioner] ACTION: Configuring web server for ${details.domain} at ${details.rootPath} via CPanel API (simulation).`);
         await new Promise(resolve => setTimeout(resolve, 50));
-        console.log("CPanelProvisioner: Web server configuration simulated.");
+    }
+}
+
+export class KubectlProvisioner implements IServerProvisioner {
+    async configureWebServer(details: ServerConfigDetails): Promise<void> {
+        console.log(`[KubectlProvisioner] ACTION: Provisioning server for ${details.appName} (Kubernetes).`);
+        await new Promise(resolve => setTimeout(resolve, 20));
     }
 }

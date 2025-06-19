@@ -1,6 +1,7 @@
 export interface SslOperationDetails {
-    action: 'install' | 'renew';
+    action: 'install' | 'renew' | 'ensure_cert_manager';
     domain: string;
+    [key: string]: any;
 }
 
 export interface ISSLCertificateManager {
@@ -8,12 +9,15 @@ export interface ISSLCertificateManager {
 }
 
 export class SharedLetsEncryptManager implements ISSLCertificateManager {
-    constructor() {
-        console.log("SharedLetsEncryptManager Initialized (stub).");
-    }
     async manageCertificate(details: SslOperationDetails): Promise<void> {
-        console.log(`SharedLetsEncryptManager: Performing SSL action '${details.action}' for domain '${details.domain}' (stub)...`);
+        console.log(`[SharedLetsEncryptManager] ACTION: Installing Let's Encrypt SSL certificate for ${details.domain} (simulation).`);
         await new Promise(resolve => setTimeout(resolve, 50));
-        console.log(`SharedLetsEncryptManager: SSL action '${details.action}' simulated for '${details.domain}'.`);
+    }
+}
+
+export class CertManagerForK8s implements ISSLCertificateManager {
+    async manageCertificate(details: SslOperationDetails): Promise<void> {
+        console.log(`[CertManagerForK8s] ACTION: Managing SSL for ${details.domain} (Kubernetes).`);
+        await new Promise(resolve => setTimeout(resolve, 20));
     }
 }
