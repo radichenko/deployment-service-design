@@ -3,43 +3,68 @@ import { IDeploymentStrategy } from '../strategies/iDeploymentStrategy';
 import { SharedHostingStrategy } from '../strategies/sharedHostingStrategy';
 import { IInfrastructureFactory } from '../factories/iInfrastructureFactory';
 import { SharedHostingInfraFactory } from '../factories/sharedHostingInfraFactory';
+import { IDeploymentObservable, IDeploymentObserver, IDeploymentEvent } from '../observers/iDeploymentObserver';
 
-export class DeploymentService {
+export class DeploymentService implements IDeploymentObservable {
     private strategyRegistry: Map<string, () => IDeploymentStrategy> = new Map();
     private factoryRegistry: Map<string, () => IInfrastructureFactory> = new Map();
+    private observers: IDeploymentObserver[] = [];
 
     constructor() {
-        console.log("DeploymentService Initialized.");
         this.strategyRegistry.set('shared', () => new SharedHostingStrategy());
         this.factoryRegistry.set('shared', () => new SharedHostingInfraFactory());
     }
 
+    addObserver(observer: IDeploymentObserver): void {
+        this.observers.push(observer);
+        console.log(`Observer ${observer.constructor.name} added.`);
+    }
+
+    removeObserver(observer: IDeploymentObserver): void {
+        const index = this.observers.indexOf(observer);
+        if (index > -1) {
+            this.observers.splice(index, 1);
+            console.log(`Observer ${observer.constructor.name} removed.`);
+        }
+    }
+
+    notifyObservers(event: IDeploymentEvent): void {
+        for (const observer of this.observers) {
+            observer.update(event);
+        }
+    }
+
+    private createEvent(type: IDeploymentEvent['type'], message: string, details?: any): IDeploymentEvent {
+        return { type, message, timestamp: new Date(), details };
+    }
+
     public async deploy(config: DeploymentConfig): Promise<void> {
-        console.log(`Received deployment request for app: ${config.appName}`);
-        console.log(`Hosting type: ${config.hostingType}`);
+        this.notifyObservers(this.createEvent('INFO', `Deployment process started for app: ${config.appName}`, { app: config.appName, hosting: config.hostingType }));
 
         const strategyConstructor = this.strategyRegistry.get(config.hostingType);
         const factoryConstructor = this.factoryRegistry.get(config.hostingType);
 
         if (!strategyConstructor || !factoryConstructor) {
-            console.error(`No strategy or factory found for hosting type '${config.hostingType}'.`);
+            const errorMsg = `No strategy or factory found for hosting type '${config.hostingType}'.`;
+            this.notifyObservers(this.createEvent('ERROR', errorMsg, { app: config.appName, hosting: config.hostingType }));
+            console.error(errorMsg); // Також логуємо напряму для наочності
             return;
         }
 
         const activeStrategy = strategyConstructor();
         const activeFactory = factoryConstructor();
-        console.log(`Selected strategy: ${activeStrategy.constructor.name}, factory: ${activeFactory.constructor.name}`);
+        this.notifyObservers(this.createEvent('INFO', `Using strategy: ${activeStrategy.constructor.name} and factory: ${activeFactory.constructor.name}`, { app: config.appName }));
 
-
-        if (activeStrategy && activeFactory) {
-            try {
-                await activeStrategy.execute(config, activeFactory);
-                console.log(`Strategy execution completed for ${config.appName}.`);
-            } catch (error) {
-                console.error(`Error during strategy execution for ${config.appName}:`, error);
+        try {
+            if ('setObservable' in activeStrategy && typeof (activeStrategy as any).setObservable === 'function') {
+                (activeStrategy as any).setObservable(this);
             }
-        } else {
-            // console.log(`No active strategy or factory to execute for ${config.appName}.`);
+            await activeStrategy.execute(config, activeFactory);
+            this.notifyObservers(this.createEvent('SUCCESS', `Deployment successfully completed for ${config.appName}.`, { app: config.appName }));
+        } catch (error: any) {
+            const errorMsg = error.message || 'Unknown error during strategy execution.';
+            this.notifyObservers(this.createEvent('ERROR', `Error during deployment for ${config.appName}: ${errorMsg}`, { app: config.appName, error: error.toString() }));
+            console.error(`Error during strategy execution for ${config.appName}:`, error);
         }
     }
 }
